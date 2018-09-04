@@ -100,6 +100,20 @@ func resourceProfitBricksServer() *schema.Resource {
 				Optional:      true,
 				Computed:      true,
 			},
+			"cdrom": {
+				Type:     schema.TypeList,
+				Optional: true,
+				ForceNew: true,
+				MaxItems: 1,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"image_id": {
+							Required: true,
+							Type:     schema.TypeString,
+						},
+					},
+				},
+			},
 			"volume": {
 				Type:     schema.TypeList,
 				Required: true,
@@ -505,6 +519,16 @@ func resourceProfitBricksServerCreate(d *schema.ResourceData, meta interface{}) 
 				},
 			},
 		},
+	}
+
+	if v, ok := d.GetOk("cdrom.0.image_id"); ok {
+		request.Entities.Cdroms = &profitbricks.Cdroms{
+			Items: []profitbricks.Image{
+				{
+					ID: v.(string),
+				},
+			},
+		}
 	}
 
 	if _, ok := d.GetOk("nic"); ok {
