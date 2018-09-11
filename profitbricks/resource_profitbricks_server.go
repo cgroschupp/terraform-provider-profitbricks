@@ -420,54 +420,38 @@ func resourceProfitBricksServerCreate(d *schema.ResourceData, meta interface{}) 
 	} else {
 		img, err := client.GetImage(image_name)
 
-		apiError, ok := err.(profitbricks.ApiError)
-		if !ok {
-			return fmt.Errorf("Error fetching image %s: (%s)", image_name, err)
-		}
-
-		if apiError.HttpStatusCode() == 404 {
-			img, err := client.GetSnapshot(image_name)
-
-			if apiError, ok := err.(profitbricks.ApiError); !ok {
-				if apiError.HttpStatusCode() == 404 {
-					return fmt.Errorf("image/snapshot: %s Not Found", img.Response)
-				}
+		if err != nil {
+			apiError, ok := err.(profitbricks.ApiError)
+			if !ok {
+				return fmt.Errorf("Error fetching image %s: (%s)", image_name, err)
 			}
 
-			isSnapshot = true
-		} else {
-			if err != nil {
-				return fmt.Errorf("Error fetching image/snapshot: %s", err)
+			if apiError.HttpStatusCode() == 404 {
+				img, err := client.GetSnapshot(image_name)
+
+				if err != nil {
+					if apiError, ok := err.(profitbricks.ApiError); !ok {
+						if apiError.HttpStatusCode() == 404 {
+							return fmt.Errorf("image/snapshot: %s Not Found", img.Response)
+						}
+					}
+				}
+
+				isSnapshot = true
+			} else {
+				if err != nil {
+					return fmt.Errorf("Error fetching image/snapshot: %s", err)
+				}
 			}
 		}
 		if img.Properties.Public == true && isSnapshot == false {
 			if volume.ImagePassword == "" && len(sshkey_path) == 0 {
 				return fmt.Errorf("Either 'image_password' or 'ssh_key_path' must be provided.")
 			}
-			img, err := getImage(client, d.Get("datacenter_id").(string), image_name, volume.Type)
-			if err != nil {
-				return err
-			}
-			if img != nil {
-				image = img.ID
-			}
-		} else {
-			img, err := client.GetImage(image_name)
-			if err != nil {
-				img, err := client.GetSnapshot(image_name)
-				if err != nil {
-					return fmt.Errorf("Error fetching image/snapshot: %s", img.Response)
-				}
-				isSnapshot = true
-			}
-			if img.Properties.Public == true && isSnapshot == false {
-				if volume.ImagePassword == "" && len(sshkey_path) == 0 {
-					return fmt.Errorf("Either 'image_password' or 'ssh_key_path' must be provided.")
-				}
-				image = image_name
-			} else {
-				image = image_name
-			}
+		}
+
+		if img != nil {
+			image = img.ID
 		}
 	}
 
